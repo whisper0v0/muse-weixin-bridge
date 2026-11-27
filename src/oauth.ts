@@ -20,7 +20,7 @@ export async function ownerAuthenticated(request:Request,secret:string):Promise<
 }
 function allowedRedirects(env:Env):string[]{
  const entries=(env.OAUTH_REDIRECT_URIS??DEFAULT_REDIRECT).split(',').map(x=>x.trim()).filter(Boolean);
- return entries.filter(value=>{try{const u=new URL(value);return u.origin==='https://chatgpt.com'&&!u.search&&!u.hash&&(u.pathname==='/connector_platform_oauth_redirect'||/^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(u.pathname));}catch{return false;}});
+ return entries.filter(value=>{try{const u=new URL(value);if(u.search||u.hash)return false;return (u.origin==='https://chatgpt.com'&&(u.pathname==='/connector_platform_oauth_redirect'||/^\/connector\/oauth\/[A-Za-z0-9_-]+$/.test(u.pathname)))||(u.origin==='https://agent.meta.ai'&&u.pathname==='/api/hatch/oauth/callback');}catch{return false;}});
 }
 async function body(request:Request):Promise<string>{
  if(Number(request.headers.get('Content-Length')??0)>16384)throw new Error('Body limit');
