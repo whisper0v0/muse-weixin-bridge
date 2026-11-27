@@ -13,6 +13,8 @@ export interface McpBackend {
   /** Read queued messages without consuming them. The backend enforces the wait deadline. */
   receive(waitSeconds: number): Promise<unknown>;
   reply(messageId: string, text: string): Promise<unknown>;
+  /** Proactively send text to the bound account owner using the newest stored conversation context. */
+  send(text: string): Promise<unknown>;
   disconnect(): Promise<unknown>;
   eventsEnabled?: boolean;
   subscribe?(params: EventSubscribeParams): Promise<EventSubscriptionResult>;
@@ -47,6 +49,16 @@ const TOOLS = [
         messageId: { type: "string", minLength: 1, maxLength: 256 },
         text: { type: "string", minLength: 1, maxLength: 4000 },
       }, required: ["messageId", "text"], additionalProperties: false,
+    },
+    annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
+  },
+  {
+    name: "wechat_send",
+    description: "Proactively send text to the bound Weixin account owner without replying to a specific message. Uses the newest stored conversation context: the upstream channel accepts proactive sends only while that context is alive (roughly a day after the owner's last message) and only a bounded number of sends per context. This is an external message send, subject to the host's authorization and approval controls.",
+    inputSchema: {
+      type: "object", properties: {
+        text: { type: "string", minLength: 1, maxLength: 4000 },
+      }, required: ["text"], additionalProperties: false,
     },
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true },
   },
@@ -230,6 +242,14 @@ export async function handleMcp(request: Request, backend: McpBackend): Promise<
             return error(id, -32602, "Provide messageId (1–256 characters) and text (1–4000 characters)");
           }
           operation = () => backend.reply(messageId, text); break;
+        }
+        case "wechat_send": {
+          const { text } = args;
+          if (!onlyKeys(args, ["text"]) || typeof text !== "string" ||
+              text.trim().length === 0 || text.length > 4000) {
+            return error(id, -32602, "Provide text (1–4000 characters)");
+          }
+          operation = () => backend.send(text); break;
         }
         case "wechat_disconnect":
           if (!onlyKeys(args, [])) return error(id, -32602, "wechat_disconnect takes no arguments");
