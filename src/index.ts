@@ -32,7 +32,7 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
  const account=env.ACCOUNTS.getByName('self-hosted-owner');
  try {
   if(url.pathname==='/mcp')return handleMcp(request,{
-   status:()=>account.status(),receive:(seconds)=>account.receive(seconds),reply:(id,text)=>account.reply(id,text),disconnect:()=>account.disconnect(),
+   status:()=>account.status(),receive:(seconds)=>account.receive(seconds),reply:(id,text)=>account.reply(id,text),send:(text)=>account.send(text),disconnect:()=>account.disconnect(),
    eventsEnabled:env.EVENTS_DISCOVERY_ENABLED==='true'||!!env.CALLBACK_HOSTS?.trim(),subscribe:async(p)=>{
     const hostname=new URL(p.delivery.url).hostname;
     // Structured, host-only onboarding signal remains available during DO rollout.
