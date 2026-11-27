@@ -40,7 +40,7 @@
   },
   "vars": {
       "APP_ORIGIN": "https://muse-weixin-bridge.wjy1503617042.workers.dev",
-    "OAUTH_REDIRECT_URIS": "https://chatgpt.com/connector_platform_oauth_redirect",
+    "OAUTH_REDIRECT_URIS": "https://chatgpt.com/connector_platform_oauth_redirect,https://agent.meta.ai/api/hatch/oauth/callback",
     "EVENTS_DISCOVERY_ENABLED": "false",
     "CALLBACK_HOSTS": " "
   }
