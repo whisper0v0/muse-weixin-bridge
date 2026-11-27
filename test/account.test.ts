@@ -90,3 +90,23 @@ test('admin diagnostics count filtering and message states without retaining mes
   empty=true;await call('/poll');assert.deepEqual((await call('/diagnostics')).data.lastNonEmptyBatch,batch);
  }finally{await mf.dispose();}
 });
+
+
+test('Durable Object: proactive send reuses newest context and enforces its budget',{timeout:10000},async()=>{
+ const contexts:string[]=[];
+ const {mf,call}=await harness(async request=>{
+  const path=new URL(request.url).pathname;
+  if(path.endsWith('/getupdates'))return Response.json({msgs:[message('1')]},get_updates_buf:'next'});
+ if(path.endsWith('/sendmessage')){const body=await request.json() as {msg:{context_token:string}};contexts.push(body.msg.context_token);return Response.json({ret:0,message_id:'sent-x'});}
+ throw new Error('Unexpected outbound: '+path);
+});
+try{
+ await call('/seed');
+ assert.equal((await call('/send',{text:'too early'})).status,409);
+ await call('/poll');
+ assert.equal((await call('/send',{text:'digest'})).data.status,'sent');
+ assert.deepEqual(contexts,['ctx']);
+ for(let i=0;i<4;i++)assert.equal((await call('/send',{text:'more'})).data.status,'sent');
+ assert.equal((await call('/send',{text:'one too many'})).status,409);
+ assert.equal(contexts.length,5);
+}finally{await mf.dispose();}});
