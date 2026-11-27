@@ -2,6 +2,7 @@
   "name": "muse-weixin-bridge",
   "main": "src/index.ts",
   "compatibility_date": "2026-10-30",
+  "workers_dev": true,
   "durable_objects": {
     "code_update_strategy": {
       "mode": "immediate"
@@ -38,7 +39,7 @@
     }
   },
   "vars": {
-    "APP_ORIGIN": "http://localhost:8787",
+      "APP_ORIGIN": "https://muse-weixin-bridge.wjy1503617042.workers.dev",
     "OAUTH_REDIRECT_URIS": "https://chatgpt.com/connector_platform_oauth_redirect",
     "EVENTS_DISCOVERY_ENABLED": "false",
     "CALLBACK_HOSTS": " "
