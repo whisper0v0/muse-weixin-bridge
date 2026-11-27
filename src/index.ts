@@ -13,6 +13,15 @@ export default {async fetch(request:Request,env:Env):Promise<Response>{
  const oauth=await handleOAuth(request,env);if(oauth)return oauth;
  const origin=request.headers.get('Origin');
  if(origin && origin!==env.APP_ORIGIN)return new Response('Forbidden origin',{status:403});
+ if(url.pathname==='/signal' && request.method==='GET'){
+  // Public wake-up counter for the owner's polling sentinel. Exposes only the
+  // pending-message count: no message content, sender data or credentials.
+  try{
+   const s=await env.ACCOUNTS.getByName('self-hosted-owner').status() as {pending?:unknown};
+   const v=typeof s.pending==='number'&&Number.isFinite(s.pending)?s.pending:0;
+   return Response.json({v},{headers:{'Cache-Control':'no-store'}});
+  }catch{return Response.json({v:0},{headers:{'Cache-Control':'no-store'}});}
+ }
  const owner=await ownerAuthenticated(request,env.BRIDGE_TOKEN ?? '');
  let grant:OAuthGrant|undefined;
  if(!owner && url.pathname==='/mcp' && env.OAUTH && (env.BRIDGE_TOKEN?.length??0)>=32){
