@@ -197,6 +197,40 @@ export class WeixinAccount extends DurableObject<Env> {
    return sent?{status:'sent'}:{status:'outcome_unknown',retryAllowed:false};
   });
  }
+ async send(text:string) {
+  if(!text.trim() || text.length>4000)throw new Error('Invalid text');
+  const reservation=await this.ctx.blockConcurrencyWhile(async()=>{
+   const b=await this.ctx.storage.get<Binding>('binding');if(!b)return {kind:'error' as const,error:'Not connected'};
+   // Proactive sends ride on the newest stored context token. Every inbound
+   // message already persists its token in the messages table, so no separate
+   // token store is needed; the budget below bounds sends against that token.
+   const row=this.ctx.storage.sql.exec<Row>("SELECT * FROM messages WHERE sender=? ORDER BY created DESC LIMIT 1",b.owner).toArray()[0];
+   if(!row)return {kind:'error' as const,error:'No conversation context yet'};
+   const budget=await this.ctx.storage.get<{context:string;count:number}>('proactiveBudget');
+   const count=budget?.context===row.context?budget.count:0;
+   // One context token supports at most 10 sends upstream. Cap proactive
+   // sends well below that so real replies keep headroom on the same token.
+   if(count>=5)return {kind:'error' as const,error:'Proactive send budget exhausted for the current context'};
+   const clientId=crypto.randomUUID();
+   // Persist the reservation before any external send: a crash mid-send must
+   // not refund budget, because the message may already have been delivered.
+   await this.ctx.storage.put('proactiveBudget',{context:row.context,count:count+1});
+   await this.ctx.storage.sync();
+   return {kind:'send' as const,b,row,clientId};
+  });
+  if(reservation.kind==='error')throw new Error(reservation.error);
+  const {b,row,clientId}=reservation;
+  let sent=false;
+  try {
+   await new WeixinClient({token:b.token,baseUrl:b.baseUrl}).sendText({toUserId:b.owner,text,contextToken:row.context,clientId});
+   sent=true;
+  }catch{ /* A failed transport does not establish that upstream failed to send. */ }
+  return this.ctx.blockConcurrencyWhile(async()=>{
+   if((await this.ctx.storage.get<Binding>('binding'))?.generation!==b.generation)
+    return {status:'outcome_unknown',retryAllowed:false,disconnected:true};
+   return sent?{status:'sent'}:{status:'outcome_unknown',retryAllowed:false};
+  });
+ }
  async disconnect() {
   return this.ctx.blockConcurrencyWhile(async()=>{
    const grant=await this.ctx.storage.get<OAuthGrant|null>('oauthGrant');
