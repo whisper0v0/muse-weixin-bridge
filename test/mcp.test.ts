@@ -8,6 +8,7 @@ function backend() {
     status: async () => ({ connected: true }),
     receive: async (wait) => { calls.push(["receive", wait]); return { messages: [] }; },
     reply: async (id, text) => { calls.push(["reply", id, text]); return { sent: true }; },
+    send: async (text) => { calls.push(["send", text]); return { sent: true }; },
     disconnect: async () => { calls.push(["disconnect"]); return { connected: false }; },
   };
   return { implementation, calls };
