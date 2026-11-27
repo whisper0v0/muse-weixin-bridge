@@ -23,6 +23,7 @@ export default {
     case '/poll':value=await stub.pollOnce();break;
     case '/receive':value=await stub.receive(0);break;
     case '/reply':value=await stub.reply(data.id??'',data.text??'');break;
+        case '/send':value=await stub.send(data.text??'');break;
     case '/disconnect':value=await stub.disconnect();break;
     case '/start':value=await stub.startLogin();break;
     case '/diagnostics':value=await stub.getCallbackDiagnostics();break;
